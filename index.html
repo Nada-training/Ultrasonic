@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Arduino Easy Learning Game</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f7fb;
+      margin: 0;
+      padding: 0;
+      text-align: center;
+    }
+    .card {
+      background: white;
+      margin: 30px auto;
+      padding: 20px;
+      width: 80%;
+      max-width: 700px;
+      border-radius: 16px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+    }
+    img {
+      max-width: 200px;
+      margin: 10px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      background: #4f46e5;
+      color: white;
+      margin: 10px;
+    }
+    .hidden { display: none; }
+    .option {
+      display: block;
+      background: #e5e7eb;
+      padding: 10px;
+      margin: 10px;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<div id="flipbook" class="card">
+  <h2 id="title">Arduino Code Step by Step</h2>
+  <p id="text">This page explains each line of the ultrasonic LED code so learners understand it.</p>
+  <img id="image" src="ultrasonic.jpg" />
+  <br />
+  <button id="nextPageBtn">Next</button>
+</div>
+
+<div id="game" class="card hidden">
+  <h2 id="levelTitle">Level 1</h2>
+  <p id="score">Score: 0</p>
+  <p id="question">What is Arduino?</p>
+  <div id="options"></div>
+  <button id="nextLevelBtn" disabled style="background:#9ca3af;">Choose correct answer</button>
+  <hr />
+  <p id="simText">Simulated distance: 15 cm → LED OFF</p>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const nextBtn = document.getElementById('nextPageBtn');
+  if (nextBtn) {
+    nextBtn.addEventListener('click', nextPage);
+  }
+
+  const nextLevelBtn = document.getElementById('nextLevelBtn');
+  if (nextLevelBtn) {
+    nextLevelBtn.addEventListener('click', nextLevel);
+  }
+});
+
+const pages = [
+  { title: "Variables", text: `int trig = 7; → trig pin sends ultrasonic pulse\nint echo = 6; → echo pin receives pulse\nint led = 3; → LED pin`, img: "ultrasonic.jpg" },
+  { title: "setup()", text: `pinMode(trig, OUTPUT) → trig sends signal\npinMode(echo, INPUT) → echo reads signal\npinMode(led, OUTPUT) → LED can light up`, img: "circuit.jpeg" },
+  { title: "loop()", text: `digitalWrite(trig, LOW) → make sure trig is off\ndelayMicroseconds(2) → short pause\ndigitalWrite(trig, HIGH) → send ultrasonic pulse\ndelayMicroseconds(10) → keep pulse high\ndigitalWrite(trig, LOW) → stop pulse`, img: "ultrasonic.jpg" },
+  { title: "Measure Distance", text: `int d = pulseIn(echo, HIGH) * 0.034 / 2 → measure time of echo, convert to cm`, img: "ultrasonic.jpg" },
+  { title: "Decision", text: `if(d < 10) → LED HIGH (ON)\nelse → LED LOW (OFF)`, img: "led.jpeg" }
+];
+
+let page = 0;
+function nextPage() {
+  const titleEl = document.getElementById('title');
+  const textEl = document.getElementById('text');
+  const imageEl = document.getElementById('image');
+
+  if (!titleEl || !textEl || !imageEl) return; // prevent errors if elements missing
+
+  page++;
+  if (page < pages.length) {
+    titleEl.innerText = pages[page].title;
+    textEl.innerText = pages[page].text;
+    imageEl.src = pages[page].img;
+  } else {
+    const flipbookEl = document.getElementById('flipbook');
+    const gameEl = document.getElementById('game');
+    if(flipbookEl) flipbookEl.classList.add('hidden');
+    if(gameEl) gameEl.classList.remove('hidden');
+    loadLevel();
+    startUltrasonicSimulation();
+  }
+}
+
+let simulatedDistance = 15;
+function startUltrasonicSimulation(){
+  const simText = document.getElementById('simText');
+  if(!simText) return;
+
+  setInterval(()=>{
+    const ledState = simulatedDistance < 10 ? 'ON' : 'OFF';
+    simText.innerText = `Simulated distance: ${simulatedDistance} cm → LED ${ledState}`;
+  }, 500);
+}
+
+const levels = [
+  { q: "What does 'int trig = 7;' do?", options: ["Sends pulse", "Lights LED", "Measures distance"], answer: 0 },
+  { q: "Which pin receives ultrasonic pulse?", options: ["Trig", "Echo", "LED"], answer: 1 },
+  { q: "What happens if d<10?", options: ["LED ON", "LED OFF", "Nothing"], answer: 0 },
+  { q: "What does pinMode(led, OUTPUT) do?", options: ["Allows LED to light", "Measures distance", "Sends pulse"], answer: 0 }
+];
+
+let level=0, score=0, answeredCorrectly=false;
+function loadLevel(){
+  const levelTitleEl = document.getElementById('levelTitle');
+  const questionEl = document.getElementById('question');
+  const optDiv = document.getElementById('options');
+  const nextBtn = document.getElementById('nextLevelBtn');
+
+  if(!levelTitleEl || !questionEl || !optDiv || !nextBtn) return;
+
+  levelTitleEl.innerText = "Level " + (level+1);
+  questionEl.innerText = levels[level].q;
+  optDiv.innerHTML = "";
+  answeredCorrectly=false;
+  nextBtn.disabled=true;
+  nextBtn.innerText='Choose correct answer';
+  nextBtn.style.background='#9ca3af';
+
+  levels[level].options.forEach((opt,i)=>{
+    const div=document.createElement('div');
+    div.className='option';
+    div.innerText=opt;
+    div.onclick=()=>{
+      if(i===levels[level].answer && !answeredCorrectly){
+        answeredCorrectly=true;
+        score+=1;
+        const scoreEl = document.getElementById('score');
+        if(scoreEl) scoreEl.innerText='Score: '+score;
+        div.style.background='#bbf7d0';
+        nextBtn.disabled=false;
+        nextBtn.innerText='Next Level';
+        nextBtn.style.background='#22c55e';
+      }else if(!answeredCorrectly){
+        div.style.background='#fecaca';
+      }
+    };
+    optDiv.appendChild(div);
+  });
+}
+
+function nextLevel(){
+  level++;
+  if(level<levels.length) loadLevel();
+  else {
+    const gameEl = document.getElementById('game');
+    if(gameEl) gameEl.innerHTML='<h2>Great Job! 🎉</h2><p>You finished the Arduino game.</p>';
+  }
+}
+</script>
+</body>
+</html>
